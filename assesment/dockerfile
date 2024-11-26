@@ -1,0 +1,22 @@
+FROM node:20 AS builder
+
+WORKDIR /app
+
+COPY package.json yarn.lock ./
+COPY prisma ./prisma/
+
+
+RUN yarn 
+
+COPY . .
+RUN yarn prisma:generate
+
+RUN yarn build
+
+FROM node:20
+WORKDIR /app
+COPY --from=builder /app/node_modules /app/node_modules
+COPY --from=builder /app/*.json /app/
+COPY --from=builder /app/dist /app/dist
+COPY --from=builder /app/prisma /app/prisma
+
