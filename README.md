@@ -5,6 +5,10 @@
 This is my implementation (@JuanjoLopez19) of the [technical assesment](https://bitbucket.org/bizaway/tech-challenge/src/main/backend.md).
 It's an API RESTFull that allows to search for flights between two given cities, ordered by price or duration and also allow the user post registration to create a trips saved list.
 
+## Important notes
+
+The .env files has values to simplify the use and visualisation of the project, in a real environment they would not be exposed. Likewise, the certificate files are self-signed and therefore do not represent a security breach.
+
 # Technologies
 
 - Core system:
@@ -270,10 +274,6 @@ yarn test:watch # or npm run test:watch
 ```bash
 yarn test:cov # or npm run test:cov
 ```
-
-## Important notes
-
-The .env files has values to simplify the use and visualisation of the project, in a real environment they would not be exposed. Likewise, the certificate files are self-signed and therefore do not represent a security breach.
 
 ### Developed by
 
