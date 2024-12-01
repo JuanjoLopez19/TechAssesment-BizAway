@@ -27,7 +27,5 @@ import { UtilsModule } from 'src/utils/utils.module';
   ],
 })
 export class TestModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    // Omitir middlewares que no sean esenciales para las pruebas
-  }
+  configure(consumer: MiddlewareConsumer) {}
 }
