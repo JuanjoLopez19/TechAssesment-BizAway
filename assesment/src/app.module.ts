@@ -7,6 +7,7 @@ import { AppLoggerMiddleware } from './middleware/http.middleware';
 import { TripsModule } from './trips/trips.module';
 import { AuthModule } from './auth/auth.module';
 import { CachingModule } from './caching/caching.module';
+import { RequestModule } from './request/request.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { CachingModule } from './caching/caching.module';
     TripsModule,
     AuthModule,
     CachingModule,
+    RequestModule,
   ],
 })
 export class AppModule implements NestModule {

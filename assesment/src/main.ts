@@ -31,14 +31,16 @@ async function bootstrap() {
   app.useGlobalPipes(buildValidationPipe());
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
   app.use(cookieParser());
-  app.setGlobalPrefix('api/v1');
+  app.setGlobalPrefix('v1/api');
 
   const configurationService =
     app.get<ConfigurationService>(ConfigurationService);
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle(configurationService.app.name)
-    .setDescription('This is the OpenAPI documentation for the assesment API')
+    .setDescription(
+      'Documentation for the Tech Assessment, the API has been built using NestJS and consists in a simple CRUD for users and a Simple trip manager that allows the user to find trips using a 3rd party API, save them into a list, and the filter and sort them.',
+    )
     .setVersion('1.0.0')
     .addCookieAuth(configurationService.crypto.cookieName)
     .build();
@@ -46,14 +48,12 @@ async function bootstrap() {
   const documentFactory = () =>
     SwaggerModule.createDocument(app, swaggerConfig);
 
-  SwaggerModule.setup('api', app, documentFactory());
+  SwaggerModule.setup('docs', app, documentFactory());
   if (httpsEnabled) {
-    console.log('redirecting to https');
     http
       .createServer((req, res) => {
         const httpsPort = configurationService.http.httpsHostPort;
         const Location = `https://${req.headers.host.split(':')[0]}:${httpsPort}${req.url}`;
-        console.log(Location);
         res.writeHead(301, {
           Location,
         });
@@ -119,24 +119,26 @@ const buildValidationPipe = () => {
 };
 
 const configureHttps = (config: ConfigService, sslEnabled: boolean) => {
-  if (sslEnabled) {
-    if (
-      fs.existsSync(`${process.cwd()}${config.get('HTTPS_KEY') || ''}`) &&
-      fs.existsSync(`${process.cwd()}${config.get('HTTPS_CERT') || ''}`)
-    ) {
-      return {
-        key: fs.readFileSync(
-          `${process.cwd()}${config.get('HTTPS_KEY') || ''}`,
-        ),
-        cert: fs.readFileSync(
-          `${process.cwd()}${config.get('HTTPS_CERT') || ''}`,
-        ),
-        ca: config.get('HTTPS_CA')
-          ? [fs.readFileSync(`${process.cwd()}${config.get('HTTPS_CA') || ''}`)]
-          : [],
-      };
-    }
-  } else return undefined;
+  return sslEnabled ? configureHttpsEnabled(config) : configureHttpsDisabled();
+};
+
+const configureHttpsEnabled = (config: ConfigService) => {
+  const certsPath = `${process.cwd()}${config.get('HTTPS_FOLDER_PATH') || ''}`;
+  const keyPath = `${certsPath}${config.get('HTTPS_KEY') || ''}`;
+  const certPath = `${certsPath}${config.get('HTTPS_CERT') || ''}`;
+  const caPath = `${certsPath}${config.get('HTTPS_CA') || ''}`;
+
+  if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+    return {
+      key: fs.readFileSync(keyPath),
+      cert: fs.readFileSync(certPath),
+      ca: config.get('HTTPS_CA') ? [fs.readFileSync(caPath)] : [],
+    };
+  }
+};
+
+const configureHttpsDisabled = () => {
+  return undefined;
 };
 
 const configureLogger = (config: ConfigService): LoggerService => {
@@ -168,7 +170,6 @@ const configureLogger = (config: ConfigService): LoggerService => {
 };
 
 const configurePort = (config: ConfigurationService, sslEnabled: boolean) => {
-  console.log(sslEnabled ? config.http.httpsPort : config.http.httpPort);
   return sslEnabled ? config.http.httpsPort : config.http.httpPort;
 };
 

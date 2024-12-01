@@ -1,33 +1,30 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, StreamableFile } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'nestjs-prisma';
-import { CachingService } from 'src/caching/caching.service';
 import { PaginationQueryDto } from 'src/common/dto';
-import { HttpCommon } from 'src/common/http';
+import { CachingService } from '../caching/caching.service';
+
 import { User } from 'src/common/interfaces';
 import globalMessages from 'src/common/messages';
 import { ConfigurationService } from 'src/configuration/configuration.service';
 import { UtilsService } from 'src/utils/utils.service';
-import { QueryDto } from './dto/query.dto';
+
+import { parse } from 'json2csv';
+import { RequestService } from 'src/request/request.service';
+import { ExportQueryParamsDto, QueryDto } from './dto/query.dto';
 import { TripDto } from './dto/trip.dto';
 import { Trip } from './entities/trip.entity';
 
 @Injectable()
 export class TripsService {
   private readonly logger = new Logger(TripsService.name);
-  private readonly axiosClient: HttpCommon;
   constructor(
     private readonly prisma: PrismaService,
     private readonly utils: UtilsService,
     private readonly configurationService: ConfigurationService,
     private readonly cachingService: CachingService,
-  ) {
-    this.axiosClient = new HttpCommon(
-      this.configurationService.app.apiUrl,
-      this.configurationService.app.apiToken,
-      this.configurationService.app.apiPath,
-    );
-  }
+    private readonly requestService: RequestService,
+  ) {}
 
   /**
    * Fetches trips based on the provided query parameters.
@@ -42,13 +39,13 @@ export class TripsService {
    *
    * @throws {Error} - Throws an error if there is an issue with fetching trips.
    */
-  async getTrips(params: QueryDto): Promise<{ data: any; code: number }> {
+  async getTrips(params: QueryDto) {
     try {
       const { origin, destination, sort_by, sort_direction } = params;
 
       const key = `trips:${origin}:${destination}:${sort_by}:${sort_direction}`;
+      const cached = await this.cachingService.get<Trip[]>(key);
 
-      const cached = await this.cachingService.get(key);
       if (cached) {
         return {
           data: this.utils.buildSuccessResponse(
@@ -59,7 +56,11 @@ export class TripsService {
         };
       }
 
-      const res = await this.axiosClient.getAll<Trip[]>(destination, origin);
+      const res = await this.requestService.getAll<Trip[]>(
+        destination,
+        origin,
+        this.configurationService.app.apiPath,
+      );
 
       if (res.status !== 200) {
         this.logger.error(res.statusText);
@@ -71,30 +72,30 @@ export class TripsService {
           ),
           code: res.status,
         };
-      } else {
-        let column = '';
-        if (sort_by) {
-          column = sort_by === 'fastest' ? 'duration' : 'cost';
-        }
-
-        const items = res.data;
-
-        const sorter = (a: Trip, b: Trip) => {
-          return sort_direction === 'asc'
-            ? a[column] - b[column]
-            : b[column] - a[column];
-        };
-
-        const cachingItems = column === '' ? items : items.toSorted(sorter);
-        await this.cachingService.set(key, cachingItems);
-        return {
-          data: this.utils.buildSuccessResponse(
-            cachingItems,
-            'Trips fetched successfully',
-          ),
-          code: 200,
-        };
       }
+
+      let column = '';
+      if (sort_by) {
+        column = sort_by === 'fastest' ? 'duration' : 'cost';
+      }
+
+      const items = res.data;
+
+      const sorter = (a: Trip, b: Trip) => {
+        return sort_direction === 'asc'
+          ? a[column] - b[column]
+          : b[column] - a[column];
+      };
+
+      const cachingItems = column === '' ? items : items.toSorted(sorter);
+      await this.cachingService.set(key, cachingItems);
+      return {
+        data: this.utils.buildSuccessResponse(
+          cachingItems,
+          'Trips fetched successfully',
+        ),
+        code: 200,
+      };
     } catch (e) {
       this.logger.error(e.message);
       return {
@@ -144,7 +145,11 @@ export class TripsService {
           code: 200,
         };
       }
-      const res = await this.axiosClient.getById<Trip>(id);
+      const res = await this.requestService.getById<Trip>(
+        id,
+        this.configurationService.app.apiPath,
+      );
+
       if (res.status !== 200) {
         this.logger.error(res.statusText);
         return {
@@ -165,7 +170,6 @@ export class TripsService {
         code: 200,
       };
     } catch (e) {
-      console.log(e);
       this.logger.error(e.message);
       return {
         data: this.utils.buildErrorResponse(
@@ -201,7 +205,11 @@ export class TripsService {
 
       let temp = '';
       if (!trip) {
-        const res = await this.axiosClient.getById<Trip>(data.id);
+        const res = await this.requestService.getById<Trip>(
+          data.id,
+          this.configurationService.app.apiPath,
+        );
+
         if (res.status !== 200) {
           this.logger.error(res.statusText);
           return {
@@ -299,6 +307,13 @@ export class TripsService {
         select: { created_at: true, id_trip: true },
       });
 
+      if (listItems.length === 0) {
+        return {
+          data: this.utils.buildSuccessResponse([], 'No trips found'),
+          code: 200,
+        };
+      }
+
       const trips = await this.prisma.trips.findMany({
         where: { id: { in: listItems.map((i) => i.id_trip) } },
       });
@@ -346,7 +361,18 @@ export class TripsService {
 
       return {
         data: this.utils.buildSuccessResponse(
-          paginated,
+          paginated.map((item) => {
+            return {
+              id: item.id,
+              origin: item.origin,
+              destination: item.destination,
+              cost: item.cost,
+              duration: item.duration,
+              type: item.type,
+              display_name: item.display_name,
+              added_date: item.created_at,
+            };
+          }),
           'Saved list fetched successfully',
           this.utils.buildPaginationLinks(route, page, limit, totalPages),
         ),
@@ -421,6 +447,92 @@ export class TripsService {
         ),
         code: 204,
       };
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError) {
+        return {
+          data: this.utils.buildErrorResponse(
+            'USER_NOT_FOUND',
+            globalMessages[404].NOT_FOUND.SHORT,
+            globalMessages[404].NOT_FOUND.LONG,
+          ),
+          code: 404,
+        };
+      }
+      this.logger.error(e);
+      return {
+        data: this.utils.buildErrorResponse(
+          'INTERNAL_ERROR',
+          globalMessages[500].INTERNAL_SERVER_ERROR.SHORT,
+          globalMessages[500].INTERNAL_SERVER_ERROR.LONG,
+        ),
+        code: 500,
+      };
+    }
+  }
+
+  async exportList(user: User, type: ExportQueryParamsDto) {
+    try {
+      const { id: user_id } = user;
+      const { type: exportType } = type;
+      const u = await this.prisma.users.findUniqueOrThrow({
+        where: { id: user_id },
+      });
+
+      const listItems = await this.prisma.lists.findMany({
+        where: { id_user: u.id },
+        select: { created_at: true, id_trip: true },
+      });
+
+      if (listItems.length === 0)
+        return {
+          data: this.utils.buildSuccessResponse([], 'No trips found'),
+          code: 200,
+        };
+
+      const trips = await this.prisma.trips.findMany({
+        where: { id: { in: listItems.map((i) => i.id_trip) } },
+      });
+
+      const merged = listItems
+        .map((item) => {
+          const trip = trips.find((t) => t.id === item.id_trip);
+          return { ...item, ...trip };
+        })
+        .map((item) => {
+          return {
+            id: item.id,
+            origin: item.origin,
+            destination: item.destination,
+            cost: item.cost,
+            duration: item.duration,
+            type: item.type,
+            display_name: item.display_name,
+            added_date: item.created_at,
+          };
+        });
+
+      if (exportType === 'csv') {
+        const csv = parse(merged);
+        const buffer = Buffer.from(csv, 'utf-8');
+
+        const stream = new StreamableFile(buffer, {
+          type: 'text/csv',
+          disposition: 'attachment; filename="trips.csv"',
+          length: buffer.length,
+        });
+
+        return stream;
+      } else {
+        const buffer = Buffer.from(JSON.stringify(merged), 'utf-8');
+
+        const stream = new StreamableFile(buffer, {
+          type: 'application/json',
+          disposition: 'attachment; filename="trips.json"',
+          length: buffer.length,
+        });
+
+        return stream;
+      }
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError) {
         return {

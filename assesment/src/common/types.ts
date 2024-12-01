@@ -1,5 +1,6 @@
 import {
   ALLOWED_DIRECTION_SORTING,
+  ALLOWED_EXPORT_TYPES,
   ALLOWED_QUERY_SORTING,
   ALLOWED_SORTING,
   ALLOWED_TAGS,
@@ -48,5 +49,7 @@ export type Sorting = (typeof ALLOWED_SORTING)[number];
 export type QuerySorting = (typeof ALLOWED_QUERY_SORTING)[number];
 
 export type DirectionSorting = (typeof ALLOWED_DIRECTION_SORTING)[number];
+
+export type ExportTypes = (typeof ALLOWED_EXPORT_TYPES)[number];
 
 export type Tags = (typeof ALLOWED_TAGS)[number];

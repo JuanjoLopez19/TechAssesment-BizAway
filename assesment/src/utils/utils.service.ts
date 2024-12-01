@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as bc from 'bcryptjs';
 import { PaginationLinks } from 'src/common/interfaces';
 import { errorResponse, successResponse } from 'src/common/types';
-import { ConfigurationService } from 'src/configuration/configuration.service';
+import { ConfigurationService } from '../configuration/configuration.service';
 
 @Injectable()
 export class UtilsService {

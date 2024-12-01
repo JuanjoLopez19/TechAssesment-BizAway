@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import Redis from 'ioredis';
-import { ConfigurationService } from 'src/configuration/configuration.service';
+import { ConfigurationService } from '../configuration/configuration.service';
 
 @Injectable()
 export class CachingService {
@@ -17,7 +17,7 @@ export class CachingService {
     this.logger.log('Redis connected');
   }
 
-  async get(key: string): Promise<any> {
+  async get<T>(key: string): Promise<T> {
     const value = await this.client.get(key);
     return value ? JSON.parse(value) : null;
   }
@@ -32,5 +32,15 @@ export class CachingService {
 
   async delete(key: string): Promise<void> {
     await this.client.del(key);
+  }
+
+  async checkConnection(): Promise<boolean> {
+    try {
+      await this.client.ping();
+      return true;
+    } catch {
+      this.logger.error('Redis connection error');
+      return false;
+    }
   }
 }

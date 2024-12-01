@@ -1,8 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RegisterDto } from './dto/register.dto';
-import globalMessages from 'src/common/messages';
-import { ConfigurationService } from 'src/configuration/configuration.service';
-import { UtilsService } from 'src/utils/utils.service';
+import globalMessages from '../common/messages';
+import { UtilsService } from '../utils/utils.service';
 import { PrismaService } from 'nestjs-prisma';
 import { Prisma } from '@prisma/client';
 import { LoginDto } from './dto/login.dto';
@@ -13,7 +12,6 @@ export class AuthService {
   logger = new Logger(AuthService.name);
   constructor(
     private readonly utils: UtilsService,
-    private readonly configService: ConfigurationService,
     private readonly prismaService: PrismaService,
     private readonly jwtService: JwtService,
   ) {}

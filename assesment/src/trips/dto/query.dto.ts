@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsString, Validate } from 'class-validator';
 import {
   ALLOWED_DIRECTION_SORTING,
+  ALLOWED_EXPORT_TYPES,
   ALLOWED_QUERY_SORTING,
   ALLOWED_TAGS,
 } from 'src/common/const';
@@ -39,4 +40,14 @@ export class QueryDto {
   @IsOptional()
   @IsIn(ALLOWED_DIRECTION_SORTING)
   sort_direction?: string;
+}
+
+export class ExportQueryParamsDto {
+  @ApiProperty({
+    enum: ALLOWED_EXPORT_TYPES,
+    description: 'The type of the export',
+  })
+  @IsString()
+  @IsIn(ALLOWED_EXPORT_TYPES)
+  type: string = 'csv';
 }

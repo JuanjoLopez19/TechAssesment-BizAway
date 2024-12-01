@@ -9,6 +9,8 @@ export const ALLOWED_QUERY_SORTING = ['fastest', 'cheapest'];
 
 export const ALLOWED_DIRECTION_SORTING = ['asc', 'desc'] as const;
 
+export const ALLOWED_EXPORT_TYPES = ['csv', 'json'] as const;
+
 export const ALLOWED_TAGS = [
   'ATL',
   'PEK',

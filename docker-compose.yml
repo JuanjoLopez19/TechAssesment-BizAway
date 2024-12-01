@@ -8,7 +8,7 @@ services:
       - ${APP_HOST_HTTPS_PORT}:${APP_DOCKER_HTTPS_PORT}
     volumes:
       - ./docker/ssl:/app/certs
-    env_file: /docker/envs/app.env
+    env_file: ./docker/envs/app.env
     depends_on:
       - assesment-db
       - assesment-redis

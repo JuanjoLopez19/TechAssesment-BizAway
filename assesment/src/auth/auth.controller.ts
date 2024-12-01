@@ -5,6 +5,7 @@ import {
   ApiCreatedResponse,
   ApiInternalServerErrorResponse,
   ApiOkResponse,
+  ApiOperation,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
@@ -39,6 +40,11 @@ export class AuthController {
   @ApiUnauthorizedResponse({
     description: 'Unauthorized',
     type: ErrorResponseEntity,
+  })
+  @ApiOperation({
+    summary: 'Login user',
+    description:
+      'Login user with username and password to get access to the saved list',
   })
   async login(
     @Body() data: LoginDto,
@@ -75,6 +81,10 @@ export class AuthController {
     type: ErrorResponseEntity,
   })
   @Post('register')
+  @ApiOperation({
+    summary: 'Register user',
+    description: 'Basic user registration with username and password',
+  })
   async register(@Body() data: RegisterDto) {
     return this.authService.register(data);
   }
